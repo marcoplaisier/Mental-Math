@@ -1,0 +1,189 @@
+{% extends 'trainer/base.html' %}
+
+{% block title %}Statistics - Mental Math Trainer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 36px;
+        font-weight: bold;
+        color: #4a90d9;
+    }
+
+    .stat-label {
+        font-size: 14px;
+        color: #9ca3af;
+        margin-top: 5px;
+    }
+
+    .section-title {
+        margin: 30px 0 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .progress-bar {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+        height: 8px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4a90d9, #22c55e);
+        transition: width 0.3s;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #9ca3af;
+    }
+
+    .empty-state p {
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Your Statistics</h1>
+
+{% if total_answers > 0 %}
+<div class="stats-overview">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_answers }}</div>
+        <div class="stat-label">Questions Attempted</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ correct_answers }}</div>
+        <div class="stat-label">Correct Answers</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ accuracy }}%</div>
+        <div class="stat-label">Accuracy</div>
+    </div>
+</div>
+
+{% if difficulty_stats %}
+<div class="card">
+    <h2 class="section-title">Performance by Difficulty</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Level</th>
+                <th>Attempted</th>
+                <th>Correct</th>
+                <th>Accuracy</th>
+                <th>Avg Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stat in difficulty_stats %}
+            <tr>
+                <td>Level {{ stat.level }}: {{ stat.name }}</td>
+                <td>{{ stat.total }}</td>
+                <td>{{ stat.correct }}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="progress-bar" style="width: 100px;">
+                            <div class="progress-fill" style="width: {{ stat.accuracy }}%;"></div>
+                        </div>
+                        <span>{{ stat.accuracy }}%</span>
+                    </div>
+                </td>
+                <td>{% if stat.avg_time %}{{ stat.avg_time }}s{% else %}-{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if operation_stats %}
+<div class="card">
+    <h2 class="section-title">Performance by Operation</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Operation</th>
+                <th>Attempted</th>
+                <th>Correct</th>
+                <th>Accuracy</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stat in operation_stats %}
+            <tr>
+                <td>{{ stat.operation }}</td>
+                <td>{{ stat.total }}</td>
+                <td>{{ stat.correct }}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="progress-bar" style="width: 100px;">
+                            <div class="progress-fill" style="width: {{ stat.accuracy }}%;"></div>
+                        </div>
+                        <span>{{ stat.accuracy }}%</span>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if recent_answers %}
+<div class="card">
+    <h2 class="section-title">Recent Answers</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Question</th>
+                <th>Your Answer</th>
+                <th>Correct Answer</th>
+                <th>Result</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for answer in recent_answers %}
+            <tr>
+                <td>{{ answer.question.question_text }}</td>
+                <td>{{ answer.user_answer }}</td>
+                <td>{{ answer.question.correct_answer }}</td>
+                <td>
+                    {% if answer.is_correct %}
+                    <span class="correct">Correct</span>
+                    {% else %}
+                    <span class="incorrect">Incorrect</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card empty-state">
+    <p>No practice data yet. Start practicing to see your statistics!</p>
+    <a href="{% url 'trainer:index' %}" class="btn-primary" style="display: inline-block; text-decoration: none;">Start Practice</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,245 @@
+{% extends 'trainer/base.html' %}
+
+{% block title %}Practice - Mental Math Trainer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .question-display {
+        font-size: 48px;
+        font-weight: bold;
+        text-align: center;
+        padding: 40px 20px;
+        margin-bottom: 30px;
+    }
+
+    .answer-section {
+        text-align: center;
+    }
+
+    #answer-input {
+        max-width: 300px;
+        margin: 0 auto 20px;
+    }
+
+    .result-message {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        min-height: 40px;
+    }
+
+    .timer {
+        font-size: 18px;
+        color: #9ca3af;
+        margin-bottom: 20px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .streak-display {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #9ca3af;
+    }
+
+    .streak-count {
+        font-size: 24px;
+        font-weight: bold;
+        color: #fbbf24;
+    }
+
+    .keyboard-hint {
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="filters">
+        <select id="difficulty-select">
+            <option value="">All Difficulty Levels</option>
+            {% for value, name in difficulty_levels %}
+            <option value="{{ value }}" {% if selected_difficulty == value %}selected{% endif %}>
+                Level {{ value }}: {{ name }}
+            </option>
+            {% endfor %}
+        </select>
+        <select id="operation-select">
+            <option value="">All Operations</option>
+            {% for value, name in operation_types %}
+            <option value="{{ value }}" {% if selected_operation == value %}selected{% endif %}>
+                {{ name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <div class="streak-display">
+        Current Streak: <span class="streak-count" id="streak">0</span>
+    </div>
+
+    <div class="question-display" id="question">
+        {{ question.question_text }}
+    </div>
+
+    <div class="answer-section">
+        <div class="timer" id="timer">0.0s</div>
+
+        <input type="text"
+               id="answer-input"
+               autocomplete="off"
+               inputmode="decimal"
+               placeholder="Enter your answer"
+               autofocus>
+
+        <div class="result-message" id="result"></div>
+
+        <div class="action-buttons">
+            <button id="submit-btn" class="btn-primary">Check Answer</button>
+            <button id="next-btn" class="btn-secondary" style="display: none;">Next Question</button>
+            <button id="skip-btn" class="btn-secondary">Skip</button>
+        </div>
+
+        <p class="keyboard-hint">Press Enter to submit, or press Enter again for next question</p>
+    </div>
+</div>
+
+<input type="hidden" id="question-id" value="{{ question.id }}">
+<input type="hidden" id="csrf-token" value="{{ csrf_token }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const questionId = document.getElementById('question-id').value;
+    const csrfToken = document.getElementById('csrf-token').value;
+    const answerInput = document.getElementById('answer-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const skipBtn = document.getElementById('skip-btn');
+    const resultDiv = document.getElementById('result');
+    const timerDiv = document.getElementById('timer');
+    const streakSpan = document.getElementById('streak');
+    const difficultySelect = document.getElementById('difficulty-select');
+    const operationSelect = document.getElementById('operation-select');
+
+    let startTime = Date.now();
+    let timerInterval;
+    let answered = false;
+    let streak = parseInt(localStorage.getItem('mathStreak') || '0');
+
+    // Initialize streak display
+    streakSpan.textContent = streak;
+
+    // Start timer
+    function updateTimer() {
+        const elapsed = (Date.now() - startTime) / 1000;
+        timerDiv.textContent = elapsed.toFixed(1) + 's';
+    }
+    timerInterval = setInterval(updateTimer, 100);
+
+    // Focus input on page load
+    answerInput.focus();
+
+    // Handle answer submission
+    async function submitAnswer() {
+        if (answered) {
+            loadNextQuestion();
+            return;
+        }
+
+        const answer = answerInput.value.trim();
+        if (!answer) return;
+
+        clearInterval(timerInterval);
+        const timeTaken = Date.now() - startTime;
+
+        try {
+            const response = await fetch('{% url "trainer:check_answer" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    question_id: questionId,
+                    answer: answer,
+                    time_taken_ms: timeTaken,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                resultDiv.innerHTML = `<span class="incorrect">${data.error}</span>`;
+                return;
+            }
+
+            answered = true;
+            answerInput.disabled = true;
+            submitBtn.style.display = 'none';
+            nextBtn.style.display = 'inline-block';
+            skipBtn.style.display = 'none';
+
+            if (data.correct) {
+                resultDiv.innerHTML = '<span class="correct">Correct!</span>';
+                streak++;
+            } else {
+                resultDiv.innerHTML = `<span class="incorrect">Incorrect</span><br>
+                    <span style="font-size: 18px; color: #9ca3af;">
+                        The answer was ${data.correct_answer}
+                    </span>`;
+                streak = 0;
+            }
+
+            streakSpan.textContent = streak;
+            localStorage.setItem('mathStreak', streak.toString());
+
+        } catch (error) {
+            resultDiv.innerHTML = `<span class="incorrect">Error checking answer</span>`;
+        }
+    }
+
+    function loadNextQuestion() {
+        const difficulty = difficultySelect.value;
+        const operation = operationSelect.value;
+        let url = '{% url "trainer:index" %}';
+        const params = new URLSearchParams();
+
+        if (difficulty) params.append('difficulty', difficulty);
+        if (operation) params.append('operation', operation);
+
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+
+        window.location.href = url;
+    }
+
+    // Event listeners
+    submitBtn.addEventListener('click', submitAnswer);
+    nextBtn.addEventListener('click', loadNextQuestion);
+    skipBtn.addEventListener('click', loadNextQuestion);
+
+    answerInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitAnswer();
+        }
+    });
+
+    // Filter change handlers
+    difficultySelect.addEventListener('change', loadNextQuestion);
+    operationSelect.addEventListener('change', loadNextQuestion);
+</script>
+{% endblock %}
