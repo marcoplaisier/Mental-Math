@@ -43,6 +43,15 @@ class OperationType(models.TextChoices):
 
 
 class DifficultyLevel(models.IntegerChoices):
+    # Basic levels (easier)
+    LEVEL_14 = 14, 'Add/Subtract (below 50)'
+    LEVEL_15 = 15, 'Multiply (factors ≤ 10)'
+    LEVEL_16 = 16, 'Add/Subtract (below 100)'
+    LEVEL_17 = 17, 'Multiply (up to 100 × 5)'
+    LEVEL_18 = 18, 'Multiply (up to 100 × 10)'
+    LEVEL_19 = 19, 'Negative numbers'
+    LEVEL_20 = 20, 'Division (basic facts)'
+    # Intermediate and advanced levels
     LEVEL_1 = 1, 'Multiply by 11 (2 digits)'
     LEVEL_2 = 2, 'Multiply by 11 (3 digits)'
     LEVEL_3 = 3, 'Square numbers ending in 5'

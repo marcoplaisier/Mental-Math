@@ -22,6 +22,15 @@ class QuestionGenerator:
             difficulty_level = random.choice(list(DifficultyLevel.values))
 
         generators = {
+            # Basic levels (14-20)
+            DifficultyLevel.LEVEL_14: QuestionGenerator._add_subtract_below_50,
+            DifficultyLevel.LEVEL_15: QuestionGenerator._multiply_basic,
+            DifficultyLevel.LEVEL_16: QuestionGenerator._add_subtract_below_100,
+            DifficultyLevel.LEVEL_17: QuestionGenerator._multiply_100_by_5,
+            DifficultyLevel.LEVEL_18: QuestionGenerator._multiply_100_by_10,
+            DifficultyLevel.LEVEL_19: QuestionGenerator._negative_numbers,
+            DifficultyLevel.LEVEL_20: QuestionGenerator._division_basic,
+            # Intermediate and advanced levels (1-13)
             DifficultyLevel.LEVEL_1: QuestionGenerator._multiply_by_11_2digit,
             DifficultyLevel.LEVEL_2: QuestionGenerator._multiply_by_11_3digit,
             DifficultyLevel.LEVEL_3: QuestionGenerator._square_ending_in_5,
@@ -227,4 +236,121 @@ class QuestionGenerator:
             num1, num2, OperationType.SUBTRACTION,
             DifficultyLevel.LEVEL_13,
             f"{num1} − {num2}"
+        )
+
+    # Basic difficulty level generators (levels 14-20)
+
+    @staticmethod
+    def _add_subtract_below_50() -> Question:
+        """Level 14: Basic addition/subtraction with numbers below 50."""
+        num1 = random.randint(1, 49)
+        num2 = random.randint(1, 49)
+        if random.choice([True, False]):
+            return QuestionGenerator._create_question(
+                num1, num2, OperationType.ADDITION,
+                DifficultyLevel.LEVEL_14,
+                f"{num1} + {num2}"
+            )
+        else:
+            # Ensure positive result
+            if num1 < num2:
+                num1, num2 = num2, num1
+            return QuestionGenerator._create_question(
+                num1, num2, OperationType.SUBTRACTION,
+                DifficultyLevel.LEVEL_14,
+                f"{num1} − {num2}"
+            )
+
+    @staticmethod
+    def _multiply_basic() -> Question:
+        """Level 15: Basic multiplication with both factors 10 or lower."""
+        num1 = random.randint(2, 10)
+        num2 = random.randint(2, 10)
+        return QuestionGenerator._create_question(
+            num1, num2, OperationType.MULTIPLICATION,
+            DifficultyLevel.LEVEL_15,
+            f"{num1} × {num2}"
+        )
+
+    @staticmethod
+    def _add_subtract_below_100() -> Question:
+        """Level 16: Addition/subtraction with numbers below 100."""
+        num1 = random.randint(10, 99)
+        num2 = random.randint(10, 99)
+        if random.choice([True, False]):
+            return QuestionGenerator._create_question(
+                num1, num2, OperationType.ADDITION,
+                DifficultyLevel.LEVEL_16,
+                f"{num1} + {num2}"
+            )
+        else:
+            # Ensure positive result
+            if num1 < num2:
+                num1, num2 = num2, num1
+            return QuestionGenerator._create_question(
+                num1, num2, OperationType.SUBTRACTION,
+                DifficultyLevel.LEVEL_16,
+                f"{num1} − {num2}"
+            )
+
+    @staticmethod
+    def _multiply_100_by_5() -> Question:
+        """Level 17: Multiply a number up to 100 by a number up to 5."""
+        num1 = random.randint(2, 100)
+        num2 = random.randint(2, 5)
+        return QuestionGenerator._create_question(
+            num1, num2, OperationType.MULTIPLICATION,
+            DifficultyLevel.LEVEL_17,
+            f"{num1} × {num2}"
+        )
+
+    @staticmethod
+    def _multiply_100_by_10() -> Question:
+        """Level 18: Multiply a number up to 100 by a number up to 10."""
+        num1 = random.randint(2, 100)
+        num2 = random.randint(2, 10)
+        return QuestionGenerator._create_question(
+            num1, num2, OperationType.MULTIPLICATION,
+            DifficultyLevel.LEVEL_18,
+            f"{num1} × {num2}"
+        )
+
+    @staticmethod
+    def _negative_numbers() -> Question:
+        """Level 19: Addition/subtraction involving negative numbers."""
+        num1 = random.randint(-50, 50)
+        num2 = random.randint(-50, 50)
+        # Avoid trivial cases where both are positive or both are zero
+        while num1 >= 0 and num2 >= 0:
+            num1 = random.randint(-50, 50)
+            num2 = random.randint(-50, 50)
+
+        if random.choice([True, False]):
+            # Format negative numbers with parentheses
+            op1_str = f"({num1})" if num1 < 0 else str(num1)
+            op2_str = f"({num2})" if num2 < 0 else str(num2)
+            return QuestionGenerator._create_question(
+                num1, num2, OperationType.ADDITION,
+                DifficultyLevel.LEVEL_19,
+                f"{op1_str} + {op2_str}"
+            )
+        else:
+            op1_str = f"({num1})" if num1 < 0 else str(num1)
+            op2_str = f"({num2})" if num2 < 0 else str(num2)
+            return QuestionGenerator._create_question(
+                num1, num2, OperationType.SUBTRACTION,
+                DifficultyLevel.LEVEL_19,
+                f"{op1_str} − {op2_str}"
+            )
+
+    @staticmethod
+    def _division_basic() -> Question:
+        """Level 20: Basic division facts (divisor 2-10, exact results)."""
+        divisor = random.randint(2, 10)
+        quotient = random.randint(1, 10)
+        dividend = divisor * quotient
+        return QuestionGenerator._create_question(
+            dividend, divisor, OperationType.DIVISION,
+            DifficultyLevel.LEVEL_20,
+            f"{dividend} ÷ {divisor}"
         )
