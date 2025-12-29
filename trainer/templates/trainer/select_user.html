@@ -1,0 +1,102 @@
+{% extends 'trainer/base.html' %}
+
+{% block title %}Select User - Mental Math Trainer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-selection {
+        text-align: center;
+        padding: 40px 20px;
+    }
+
+    .user-selection h1 {
+        margin-bottom: 10px;
+    }
+
+    .user-selection p {
+        color: #9ca3af;
+        margin-bottom: 40px;
+    }
+
+    .user-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .user-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 30px 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .user-card:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: #4a90d9;
+        transform: translateY(-3px);
+    }
+
+    .user-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #4a90d9, #22c55e);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: bold;
+        margin: 0 auto 15px;
+        color: white;
+    }
+
+    .user-name {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .user-stats {
+        font-size: 13px;
+        color: #9ca3af;
+    }
+
+    .user-stats span {
+        display: block;
+        margin-top: 4px;
+    }
+
+    .streak-badge {
+        color: #fbbf24;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card user-selection">
+    <h1>Who's Practicing?</h1>
+    <p>Select your profile to track your progress</p>
+
+    <div class="user-grid">
+        {% for user in users %}
+        <form method="post" style="display: contents;">
+            {% csrf_token %}
+            <input type="hidden" name="user_id" value="{{ user.id }}">
+            <button type="submit" class="user-card">
+                <div class="user-avatar">{{ user.name.0 }}</div>
+                <div class="user-name">{{ user.name }}</div>
+                <div class="user-stats">
+                    <span class="streak-badge">Best Streak: {{ user.best_streak }}</span>
+                    <span>Current Streak: {{ user.current_streak }}</span>
+                </div>
+            </button>
+        </form>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

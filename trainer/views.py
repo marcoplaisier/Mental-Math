@@ -1,18 +1,60 @@
 from decimal import Decimal, InvalidOperation
 import json
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.db.models import Count, Avg, Q
 from django.db.models.functions import TruncDate
 
-from .models import Question, Answer, DifficultyLevel, OperationType
+from .models import Question, Answer, DifficultyLevel, OperationType, UserProfile
 from .question_generator import QuestionGenerator
+
+
+def get_current_user(request):
+    """Get the current user from session, or None if not selected."""
+    user_id = request.session.get('user_id')
+    if user_id:
+        try:
+            return UserProfile.objects.get(id=user_id)
+        except UserProfile.DoesNotExist:
+            pass
+    return None
+
+
+def select_user(request):
+    """User selection page."""
+    if request.method == 'POST':
+        user_id = request.POST.get('user_id')
+        if user_id:
+            try:
+                user = UserProfile.objects.get(id=user_id)
+                request.session['user_id'] = user.id
+                return redirect('trainer:index')
+            except UserProfile.DoesNotExist:
+                pass
+
+    # Ensure default users exist
+    UserProfile.ensure_users_exist()
+    users = UserProfile.objects.all().order_by('name')
+
+    return render(request, 'trainer/select_user.html', {'users': users})
+
+
+def switch_user(request):
+    """Clear the current user and redirect to selection."""
+    if 'user_id' in request.session:
+        del request.session['user_id']
+    return redirect('trainer:select_user')
 
 
 def index(request):
     """Main quiz page."""
+    # Require user selection
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect('trainer:select_user')
+
     difficulty = request.GET.get('difficulty')
     operation = request.GET.get('operation')
 
@@ -39,6 +81,7 @@ def index(request):
         'operation_types': OperationType.choices,
         'selected_difficulty': difficulty,
         'selected_operation': operation,
+        'current_user': current_user,
     }
     return render(request, 'trainer/index.html', context)
 
@@ -46,6 +89,11 @@ def index(request):
 @require_http_methods(["POST"])
 def check_answer(request):
     """Check the user's answer and return result."""
+    # Get current user
+    current_user = get_current_user(request)
+    if not current_user:
+        return JsonResponse({'error': 'No user selected'}, status=401)
+
     try:
         data = json.loads(request.body)
         question_id = data.get('question_id')
@@ -76,15 +124,19 @@ def check_answer(request):
         # Check if answer is correct
         is_correct = Answer.check_answer(user_answer, question.correct_answer)
 
-        # Store the answer
+        # Store the answer with user association
         session_id = request.session.session_key or ''
         answer = Answer.objects.create(
             question=question,
+            user=current_user,
             user_answer=user_answer,
             is_correct=is_correct,
             time_taken_ms=time_taken,
             session_id=session_id
         )
+
+        # Update user's streak
+        current_user.update_streak(is_correct)
 
         # Format the correct answer for display
         correct_answer = question.correct_answer
@@ -98,6 +150,8 @@ def check_answer(request):
             'correct_answer': correct_answer_display,
             'user_answer': str(user_answer),
             'question_text': question.question_text,
+            'current_streak': current_user.current_streak,
+            'best_streak': current_user.best_streak,
         })
 
     except json.JSONDecodeError:
@@ -108,18 +162,21 @@ def check_answer(request):
 
 def statistics(request):
     """Show statistics and analysis of past performance."""
-    session_id = request.session.session_key or ''
+    # Require user selection
+    current_user = get_current_user(request)
+    if not current_user:
+        return redirect('trainer:select_user')
 
-    # Overall stats
-    total_answers = Answer.objects.filter(session_id=session_id).count()
-    correct_answers = Answer.objects.filter(session_id=session_id, is_correct=True).count()
+    # Overall stats - filter by user
+    total_answers = Answer.objects.filter(user=current_user).count()
+    correct_answers = Answer.objects.filter(user=current_user, is_correct=True).count()
     accuracy = (correct_answers / total_answers * 100) if total_answers > 0 else 0
 
     # Stats by difficulty level
     difficulty_stats = []
     for level_value, level_name in DifficultyLevel.choices:
         level_answers = Answer.objects.filter(
-            session_id=session_id,
+            user=current_user,
             question__difficulty_level=level_value
         )
         level_total = level_answers.count()
@@ -141,7 +198,7 @@ def statistics(request):
     operation_stats = []
     for op_value, op_name in OperationType.choices:
         op_answers = Answer.objects.filter(
-            session_id=session_id,
+            user=current_user,
             question__operation=op_value
         )
         op_total = op_answers.count()
@@ -158,7 +215,7 @@ def statistics(request):
 
     # Recent answers
     recent_answers = Answer.objects.filter(
-        session_id=session_id
+        user=current_user
     ).select_related('question').order_by('-answered_at')[:20]
 
     context = {
@@ -168,5 +225,6 @@ def statistics(request):
         'difficulty_stats': difficulty_stats,
         'operation_stats': operation_stats,
         'recent_answers': recent_answers,
+        'current_user': current_user,
     }
     return render(request, 'trainer/statistics.html', context)

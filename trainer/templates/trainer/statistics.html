@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block content %}
-<h1>Your Statistics</h1>
+<h1>{{ current_user.name }}'s Statistics</h1>
 
 {% if total_answers > 0 %}
 <div class="stats-overview">
@@ -77,6 +77,14 @@
     <div class="stat-card">
         <div class="stat-value">{{ accuracy }}%</div>
         <div class="stat-label">Accuracy</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color: #fbbf24;">{{ current_user.current_streak }}</div>
+        <div class="stat-label">Current Streak</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color: #22c55e;">{{ current_user.best_streak }}</div>
+        <div class="stat-label">Best Streak</div>
     </div>
 </div>
 
@@ -182,7 +190,7 @@
 
 {% else %}
 <div class="card empty-state">
-    <p>No practice data yet. Start practicing to see your statistics!</p>
+    <p>No practice data yet, {{ current_user.name }}. Start practicing to see your statistics!</p>
     <a href="{% url 'trainer:index' %}" class="btn-primary" style="display: inline-block; text-decoration: none;">Start Practice</a>
 </div>
 {% endif %}

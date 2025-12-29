@@ -86,7 +86,8 @@
 
 <div class="card">
     <div class="streak-display">
-        Current Streak: <span class="streak-count" id="streak">0</span>
+        Current Streak: <span class="streak-count" id="streak">{{ current_user.current_streak }}</span>
+        <span style="margin-left: 20px; font-size: 12px;">Best: <span id="best-streak">{{ current_user.best_streak }}</span></span>
     </div>
 
     <div class="question-display" id="question">
@@ -130,16 +131,13 @@
     const resultDiv = document.getElementById('result');
     const timerDiv = document.getElementById('timer');
     const streakSpan = document.getElementById('streak');
+    const bestStreakSpan = document.getElementById('best-streak');
     const difficultySelect = document.getElementById('difficulty-select');
     const operationSelect = document.getElementById('operation-select');
 
     let startTime = Date.now();
     let timerInterval;
     let answered = false;
-    let streak = parseInt(localStorage.getItem('mathStreak') || '0');
-
-    // Initialize streak display
-    streakSpan.textContent = streak;
 
     // Start timer
     function updateTimer() {
@@ -193,17 +191,16 @@
 
             if (data.correct) {
                 resultDiv.innerHTML = '<span class="correct">Correct!</span>';
-                streak++;
             } else {
                 resultDiv.innerHTML = `<span class="incorrect">Incorrect</span><br>
                     <span style="font-size: 18px; color: #9ca3af;">
                         The answer was ${data.correct_answer}
                     </span>`;
-                streak = 0;
             }
 
-            streakSpan.textContent = streak;
-            localStorage.setItem('mathStreak', streak.toString());
+            // Update streak from server response
+            streakSpan.textContent = data.current_streak;
+            bestStreakSpan.textContent = data.best_streak;
 
         } catch (error) {
             resultDiv.innerHTML = `<span class="incorrect">Error checking answer</span>`;
