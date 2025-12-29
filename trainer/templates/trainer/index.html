@@ -235,6 +235,14 @@
         }
     });
 
+    // Document-level Enter key handler for going to next question after answer is submitted
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && answered) {
+            e.preventDefault();
+            loadNextQuestion();
+        }
+    });
+
     // Filter change handlers
     difficultySelect.addEventListener('change', loadNextQuestion);
     operationSelect.addEventListener('change', loadNextQuestion);
