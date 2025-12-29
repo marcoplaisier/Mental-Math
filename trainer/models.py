@@ -2,6 +2,38 @@ from django.db import models
 from decimal import Decimal
 
 
+class UserProfile(models.Model):
+    """User profile for tracking individual progress."""
+    name = models.CharField(max_length=100, unique=True)
+    current_streak = models.IntegerField(default=0)
+    best_streak = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    def update_streak(self, is_correct: bool):
+        """Update streak based on answer correctness."""
+        if is_correct:
+            self.current_streak += 1
+            if self.current_streak > self.best_streak:
+                self.best_streak = self.current_streak
+        else:
+            self.current_streak = 0
+        self.save()
+
+    @classmethod
+    def get_default_users(cls):
+        """Return the list of hard-coded user names."""
+        return ['Arthur', 'Lena', 'Marco', 'Susanne']
+
+    @classmethod
+    def ensure_users_exist(cls):
+        """Create hard-coded users if they don't exist."""
+        for name in cls.get_default_users():
+            cls.objects.get_or_create(name=name)
+
+
 class OperationType(models.TextChoices):
     ADDITION = 'ADD', 'Addition'
     SUBTRACTION = 'SUB', 'Subtraction'
@@ -52,6 +84,13 @@ class Answer(models.Model):
         Question,
         on_delete=models.CASCADE,
         related_name='answers'
+    )
+    user = models.ForeignKey(
+        UserProfile,
+        on_delete=models.CASCADE,
+        related_name='answers',
+        null=True,
+        blank=True
     )
     user_answer = models.DecimalField(max_digits=20, decimal_places=10)
     is_correct = models.BooleanField()
