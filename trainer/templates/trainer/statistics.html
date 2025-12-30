@@ -58,11 +58,102 @@
     .empty-state p {
         margin-bottom: 20px;
     }
+
+    .leitner-overview {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .leitner-box-stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 15px 25px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        min-width: 80px;
+    }
+
+    .leitner-box-stat .box-num {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 5px;
+    }
+
+    .leitner-box-stat .box-count {
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    .leitner-box-stat.box-1 .box-count { color: #ef4444; }
+    .leitner-box-stat.box-2 .box-count { color: #f97316; }
+    .leitner-box-stat.box-3 .box-count { color: #eab308; }
+    .leitner-box-stat.box-4 .box-count { color: #22c55e; }
+    .leitner-box-stat.box-5 .box-count { color: #14b8a6; }
+
+    .leitner-box-stat .box-label {
+        font-size: 10px;
+        color: #9ca3af;
+        margin-top: 2px;
+    }
+
+    .due-badge {
+        background: #fbbf24;
+        color: #000;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .card-status {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .card-status.due {
+        background: rgba(251, 191, 36, 0.2);
+        color: #fbbf24;
+    }
+
+    .card-status.scheduled {
+        background: rgba(74, 144, 217, 0.2);
+        color: #4a90d9;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <h1>{{ current_user.name }}'s Statistics</h1>
+
+{% if total_cards > 0 %}
+<div class="card">
+    <h2 class="section-title">Leitner Boxes</h2>
+    <div style="text-align: center; margin-bottom: 15px;">
+        <span class="due-badge">{{ due_count }} cards due for review</span>
+    </div>
+    <div class="leitner-overview">
+        {% for box_num, count in box_distribution.items %}
+        <div class="leitner-box-stat box-{{ box_num }}">
+            <span class="box-num">Box {{ box_num }}</span>
+            <span class="box-count">{{ count }}</span>
+            <span class="box-label">
+                {% if box_num == 1 %}New/Failed{% endif %}
+                {% if box_num == 2 %}1 day{% endif %}
+                {% if box_num == 3 %}3 days{% endif %}
+                {% if box_num == 4 %}7 days{% endif %}
+                {% if box_num == 5 %}Mastered{% endif %}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 
 {% if total_answers > 0 %}
 <div class="stats-overview">
@@ -149,6 +240,44 @@
                         <span>{{ stat.accuracy }}%</span>
                     </div>
                 </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if leitner_cards %}
+<div class="card">
+    <h2 class="section-title">All Leitner Cards</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Level</th>
+                <th>Operation</th>
+                <th>Box</th>
+                <th>Status</th>
+                <th>Accuracy</th>
+                <th>Correct</th>
+                <th>Incorrect</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for card in leitner_cards %}
+            <tr>
+                <td>Level {{ card.difficulty_level }}</td>
+                <td>{{ card.get_operation_display }}</td>
+                <td>Box {{ card.box_number }}</td>
+                <td>
+                    {% if card.is_due %}
+                    <span class="card-status due">Due</span>
+                    {% else %}
+                    <span class="card-status scheduled">Scheduled</span>
+                    {% endif %}
+                </td>
+                <td>{{ card.accuracy }}%</td>
+                <td style="color: #22c55e;">{{ card.times_correct }}</td>
+                <td style="color: #ef4444;">{{ card.times_incorrect }}</td>
             </tr>
             {% endfor %}
         </tbody>

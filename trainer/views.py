@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods
 from django.db.models import Count, Avg, Q
 from django.db.models.functions import TruncDate
 
-from .models import Question, Answer, DifficultyLevel, OperationType, UserProfile
+from .models import Question, Answer, DifficultyLevel, OperationType, UserProfile, LeitnerCard
 from .question_generator import QuestionGenerator
 
 
@@ -57,31 +57,59 @@ def index(request):
 
     difficulty = request.GET.get('difficulty')
     operation = request.GET.get('operation')
+    use_leitner = request.GET.get('leitner', '1') == '1'  # Enable Leitner by default
 
-    # Generate a new question
+    # Parse difficulty
     if difficulty:
         try:
             difficulty = int(difficulty)
         except ValueError:
             difficulty = None
 
+    current_card = None
+    due_count = LeitnerCard.get_due_count(current_user)
+
+    # If Leitner mode is enabled and no specific filters are set, check for due cards
+    if use_leitner and not difficulty and not operation:
+        due_card = LeitnerCard.get_next_card_to_review(current_user)
+        if due_card:
+            current_card = due_card
+            difficulty = due_card.difficulty_level
+            operation = due_card.operation
+
+    # Generate a new question
     question = QuestionGenerator.generate(
         difficulty_level=difficulty,
         operation=operation
     )
     question.save()
 
+    # If no card was found from due cards, get or create the card for this question type
+    if not current_card:
+        current_card = LeitnerCard.get_or_create_card(
+            user=current_user,
+            difficulty_level=question.difficulty_level,
+            operation=question.operation
+        )
+
     # Get session ID for tracking
     if not request.session.session_key:
         request.session.create()
+
+    # Get box distribution for display
+    box_distribution = LeitnerCard.get_box_distribution(current_user)
 
     context = {
         'question': question,
         'difficulty_levels': DifficultyLevel.choices,
         'operation_types': OperationType.choices,
-        'selected_difficulty': difficulty,
-        'selected_operation': operation,
+        'selected_difficulty': request.GET.get('difficulty'),  # Keep original for dropdown
+        'selected_operation': request.GET.get('operation'),
         'current_user': current_user,
+        'current_card': current_card,
+        'due_count': due_count,
+        'box_distribution': box_distribution,
+        'use_leitner': use_leitner,
     }
     return render(request, 'trainer/index.html', context)
 
@@ -138,6 +166,14 @@ def check_answer(request):
         # Update user's streak
         current_user.update_streak(is_correct)
 
+        # Update Leitner card progression
+        leitner_card = LeitnerCard.get_or_create_card(
+            user=current_user,
+            difficulty_level=question.difficulty_level,
+            operation=question.operation
+        )
+        new_box = leitner_card.record_answer(is_correct)
+
         # Format the correct answer for display
         correct_answer = question.correct_answer
         if correct_answer == correct_answer.to_integral_value():
@@ -152,6 +188,8 @@ def check_answer(request):
             'question_text': question.question_text,
             'current_streak': current_user.current_streak,
             'best_streak': current_user.best_streak,
+            'leitner_box': new_box,
+            'leitner_accuracy': leitner_card.accuracy,
         })
 
     except json.JSONDecodeError:
@@ -218,6 +256,14 @@ def statistics(request):
         user=current_user
     ).select_related('question').order_by('-answered_at')[:20]
 
+    # Leitner box statistics
+    box_distribution = LeitnerCard.get_box_distribution(current_user)
+    due_count = LeitnerCard.get_due_count(current_user)
+    total_cards = sum(box_distribution.values())
+
+    # Get all Leitner cards with their details
+    leitner_cards = LeitnerCard.objects.filter(user=current_user).order_by('box_number', 'next_review')
+
     context = {
         'total_answers': total_answers,
         'correct_answers': correct_answers,
@@ -226,5 +272,9 @@ def statistics(request):
         'operation_stats': operation_stats,
         'recent_answers': recent_answers,
         'current_user': current_user,
+        'box_distribution': box_distribution,
+        'due_count': due_count,
+        'total_cards': total_cards,
+        'leitner_cards': leitner_cards,
     }
     return render(request, 'trainer/statistics.html', context)
