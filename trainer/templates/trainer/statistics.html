@@ -249,12 +249,11 @@
 
 {% if leitner_cards %}
 <div class="card">
-    <h2 class="section-title">All Leitner Cards</h2>
+    <h2 class="section-title">All Leitner Cards ({{ leitner_cards|length }} problems)</h2>
     <table>
         <thead>
             <tr>
-                <th>Level</th>
-                <th>Operation</th>
+                <th>Problem</th>
                 <th>Box</th>
                 <th>Status</th>
                 <th>Accuracy</th>
@@ -265,8 +264,7 @@
         <tbody>
             {% for card in leitner_cards %}
             <tr>
-                <td>Level {{ card.difficulty_level }}</td>
-                <td>{{ card.get_operation_display }}</td>
+                <td>{{ card.question_text }}</td>
                 <td>Box {{ card.box_number }}</td>
                 <td>
                     {% if card.is_due %}

@@ -126,7 +126,7 @@ class Answer(models.Model):
 
 class LeitnerCard(models.Model):
     """
-    Tracks Leitner box progression for each user per question type.
+    Tracks Leitner box progression for each user per individual problem.
 
     The Leitner system is a spaced repetition learning method:
     - Box 1: New/failed cards - review immediately
@@ -136,6 +136,7 @@ class LeitnerCard(models.Model):
     - Box 5: Mastered - review after 14 days
 
     Cards move up a box on correct answers, back to Box 1 on incorrect.
+    Each unique problem (e.g., "2 × 8") has its own card per user.
     """
 
     # Box intervals in days
@@ -154,12 +155,17 @@ class LeitnerCard(models.Model):
         on_delete=models.CASCADE,
         related_name='leitner_cards'
     )
-    difficulty_level = models.IntegerField(
-        choices=DifficultyLevel.choices
-    )
     operation = models.CharField(
         max_length=3,
         choices=OperationType.choices
+    )
+    operand1 = models.DecimalField(max_digits=20, decimal_places=10)
+    operand2 = models.DecimalField(max_digits=20, decimal_places=10)
+    correct_answer = models.DecimalField(max_digits=20, decimal_places=10)
+    question_text = models.CharField(max_length=200)
+    difficulty_level = models.IntegerField(
+        choices=DifficultyLevel.choices,
+        default=DifficultyLevel.LEVEL_1
     )
     box_number = models.IntegerField(default=1)
     next_review = models.DateTimeField(default=timezone.now)
@@ -171,11 +177,11 @@ class LeitnerCard(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ['user', 'difficulty_level', 'operation']
+        unique_together = ['user', 'operation', 'operand1', 'operand2']
         ordering = ['next_review', 'box_number']
 
     def __str__(self):
-        return f"{self.user.name} - Level {self.difficulty_level} {self.operation} - Box {self.box_number}"
+        return f"{self.user.name} - {self.question_text} - Box {self.box_number}"
 
     @property
     def is_due(self):
@@ -219,13 +225,17 @@ class LeitnerCard(models.Model):
         return self.box_number
 
     @classmethod
-    def get_or_create_card(cls, user, difficulty_level, operation):
-        """Get existing card or create a new one for the user and question type."""
+    def get_or_create_card(cls, user, question):
+        """Get existing card or create a new one for the user and specific problem."""
         card, created = cls.objects.get_or_create(
             user=user,
-            difficulty_level=difficulty_level,
-            operation=operation,
+            operation=question.operation,
+            operand1=question.operand1,
+            operand2=question.operand2,
             defaults={
+                'correct_answer': question.correct_answer,
+                'question_text': question.question_text,
+                'difficulty_level': question.difficulty_level,
                 'box_number': 1,
                 'next_review': timezone.now(),
             }

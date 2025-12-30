@@ -28,9 +28,9 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(LeitnerCard)
 class LeitnerCardAdmin(admin.ModelAdmin):
-    list_display = ('user', 'difficulty_level', 'operation', 'box_number', 'next_review', 'times_correct', 'times_incorrect', 'accuracy')
+    list_display = ('user', 'question_text', 'box_number', 'next_review', 'times_correct', 'times_incorrect', 'accuracy')
     list_filter = ('box_number', 'user', 'difficulty_level', 'operation')
-    search_fields = ('user__name',)
+    search_fields = ('user__name', 'question_text')
     ordering = ('user', 'box_number', 'next_review')
     readonly_fields = ('created_at', 'updated_at')
 

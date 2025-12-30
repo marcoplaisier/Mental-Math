@@ -68,28 +68,36 @@ def index(request):
 
     current_card = None
     due_count = LeitnerCard.get_due_count(current_user)
+    question = None
 
     # If Leitner mode is enabled and no specific filters are set, check for due cards
     if use_leitner and not difficulty and not operation:
         due_card = LeitnerCard.get_next_card_to_review(current_user)
         if due_card:
             current_card = due_card
-            difficulty = due_card.difficulty_level
-            operation = due_card.operation
+            # Create a Question object from the card's stored problem data
+            question = Question(
+                operation=due_card.operation,
+                difficulty_level=due_card.difficulty_level,
+                operand1=due_card.operand1,
+                operand2=due_card.operand2,
+                correct_answer=due_card.correct_answer,
+                question_text=due_card.question_text,
+            )
+            question.save()
 
-    # Generate a new question
-    question = QuestionGenerator.generate(
-        difficulty_level=difficulty,
-        operation=operation
-    )
-    question.save()
+    # If no due card, generate a new question
+    if not question:
+        question = QuestionGenerator.generate(
+            difficulty_level=difficulty,
+            operation=operation
+        )
+        question.save()
 
-    # If no card was found from due cards, get or create the card for this question type
-    if not current_card:
+        # Get or create the card for this specific problem
         current_card = LeitnerCard.get_or_create_card(
             user=current_user,
-            difficulty_level=question.difficulty_level,
-            operation=question.operation
+            question=question
         )
 
     # Get session ID for tracking
@@ -169,8 +177,7 @@ def check_answer(request):
         # Update Leitner card progression
         leitner_card = LeitnerCard.get_or_create_card(
             user=current_user,
-            difficulty_level=question.difficulty_level,
-            operation=question.operation
+            question=question
         )
         new_box = leitner_card.record_answer(is_correct)
 
